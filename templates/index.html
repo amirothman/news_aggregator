@@ -1,0 +1,66 @@
+<!doctype html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7" lang=""> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8" lang=""> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9" lang=""> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang=""> <!--<![endif]-->
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <title>Related Quranic Verses</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <link rel="stylesheet" href={{url_for('static', filename='css/normalize.min.css')}}>
+
+        <link rel="stylesheet" href={{url_for('static', filename='css/main.css')}}>
+
+        <script src={{url_for('static', filename='js/vendor/modernizr-2.8.3-respond-1.4.2.min.js')}}></script>
+    </head>
+    <body>
+        <!--[if lt IE 8]>
+            <p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
+        <![endif]-->
+
+        <h1>Related Quranic Verses</h1>
+        <div class="description">
+          News articles are automatically processed to attempt to find semantically similar Quranic verses. Translations presented here are from <a href="http://www.clearquran.com/" target="_blank">Talal Itani</a>.
+        </div>
+        <div class="pagination">
+          {% for i in range(max_page)[1:]%}
+            {% if current_page == i %}
+              {{i}}
+            {% else %}
+            <a href={{url_for("items_index",page=i)}}>{{i}}</a>
+            {% endif %}
+          {% endfor %}
+        </div>
+
+        {% for item in items%}
+          <a href={{item["link"]}} target="_blank"><h2>{{item["title"]}}</h2></a>
+          <div class="date">
+          {{item["year"]}}/{{item["month"]}}/{{item["day"]}}
+
+          </div>
+          <ul>
+            {% for related in item["title_link"] %}
+              <li><a href={{related["link"]}} target="_blank">{{related["title"]}}</a></li>
+            {% endfor %}
+          </ul>
+        {% endfor %}
+        <div class="pagination">
+
+          {% for i in range(max_page)[1:]%}
+            {% if current_page == i %}
+              {{i}}
+            {% else %}
+            <a href={{url_for("items_index",page=i)}}>{{i}}</a>
+            {% endif %}
+          {% endfor %}
+        </div>
+
+        <footer>
+          <small>Amir Othman | Studio Aras Tiga 2016</small>
+        </footer>
+        <script src={{url_for('static', filename='js/main.js')}}></script>
+    </body>
+</html>

@@ -1,0 +1,4 @@
+__pycache__/*
+model/*
+raw_corpus/*
+similarity_index/*

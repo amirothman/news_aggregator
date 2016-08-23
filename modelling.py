@@ -2,6 +2,7 @@ from gensim import corpora,models,utils
 import numpy as np
 from pymongo import MongoClient
 from preprocess_text import clean
+from corpus_dictionary import custom_corpus
 
 client = MongoClient()
 db = client['crawled_news']
@@ -9,21 +10,26 @@ collection = db['crawled_news']
 
 def tagged_docs():
     for d in collection.find():
-        # cleaned = clean(d["content"])
+        cleaned = clean(d["content"])
         doc_id = str(d["_id"])
-        yield models.doc2vec.TaggedDocument(d["content"].split(),[doc_id])
+        yield models.doc2vec.TaggedDocument(cleaned.split(),[doc_id])
 
 def update_doc2vec_model(model_path="model/doc2vec.model",size=400,min_count=5):
     doc2vec = models.doc2vec.Doc2Vec(tagged_docs(), size=size, window=8, min_count=min_count, workers=6)
     doc2vec.save(model_path)
     return doc2vec
 
-def update_lda_model(model_path="model/lda_100.model",size=100,corpus_path='corpus/all_of_words.mm'):
+def update_lda_model(model_path="model/lda.model",size=100,corpus_path='corpus/all_of_words.mm'):
     corpus = corpora.mmcorpus.MmCorpus(corpus_path)
     print("LDA Topic Modelling")
     lda = models.ldamulticore.LdaMulticore(corpus,num_topics=size,eta="auto",workers=6)
     lda.save(model_path)
     return lda
+
+def mini_lda_model(collection,num_topics=10):
+    corpus = custom_corpus(collection)
+    lda = models.ldamulticore.LdaMulticore(corpus,num_topics=num_topics,eta="auto",workers=6)
+    return lda,corpus.dictionary
 
 def google_news_model(model_target_path="model/google_news_model.model",model_source_path="/home/amir/makmal/ular_makan_surat_khabar/word_embeddings/GoogleNews-vectors-negative300.bin"):
     doc2vec = models.doc2vec.Doc2Vec(min_count=10)

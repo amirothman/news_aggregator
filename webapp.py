@@ -27,7 +27,7 @@ def items_index(page):
     skip = (page-1)*segmentation
     limit = segmentation
 
-    items = [el for el in collection.find({ "related_news" : { "$exists" : True } }).sort([["year",-1],["month",-1],["day",-1],["time_string",-1]]).skip(skip).limit(limit)]
+    items = [el for el in collection.find({ "object_id_by_divergence" : { "$exists" : True } }).sort([["year",-1],["month",-1],["day",-1],["time_string",-1]]).skip(skip).limit(limit)]
     max_page = collection.find({ "related_news" : { "$exists" : True } }).count()/segmentation
     max_page = int(max_page)
 
@@ -37,7 +37,7 @@ def items_index(page):
 
     for idx,item in enumerate(items):
         title_link = []
-        for news in item["related_news"]:
+        for news in item["object_id_by_divergence"][:10]:
             related = collection.find_one({"_id":news})
             title_link.append({"title":related["title"],"link":related["link"]})
 

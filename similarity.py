@@ -1,17 +1,28 @@
 import gensim
 import pandas as pd
 from annoy import AnnoyIndex
-from preprocess_text import text_from_file
+from preprocess_text import text_from_file,clean
 from extract import extract_from_url
 from collections import defaultdict
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 import numpy as np
 from fast_text import query_fast_text
+from modelling import mini_lda_model
+from scipy.stats import entropy
+from numpy.linalg import norm
 
 client = MongoClient()
 db = client['crawled_news']
 collection = db['crawled_news']
+
+
+def jensen_shannon_divergence(P, Q):
+    """http://stackoverflow.com/questions/15880133/jensen-shannon-divergence"""
+    _P = P / norm(P, ord=1)
+    _Q = Q / norm(Q, ord=1)
+    _M = 0.5 * (_P + _Q)
+    return 0.5 * (entropy(_P, _M) + entropy(_Q, _M))
 
 def get_item(item_id):
     # Convert from string to ObjectId:
@@ -25,12 +36,10 @@ def update_integer_id():
         modified["integer_id"] = idx
         del(modified["_id"])
         collection.replace_one({"_id":document_id},modified)
-        # print(idx)
-        # print(document)
         idx += 1
 
 def index_news_doc2vec(index_target_path,
-                       doc2vec_model_path="model/doc2vec_400.model",
+                       doc2vec_model_path="model/doc2vec.model",
                        index_dimension=400,tree_size=20):
 
     doc2vec = gensim.models.Doc2Vec.load(doc2vec_model_path)
@@ -77,7 +86,7 @@ def lda_vector(text,lda_model,dictionary,dimension):
 
 def index_news_lda(index_target_path,
                    dict_path="dictionary/all_of_words.dict",
-                   lda_model_path="model/lda_100.model",
+                   lda_model_path="model/lda.model",
                    index_dimension=100,tree_size=20):
 
     dictionary = gensim.corpora.dictionary.Dictionary.load(dict_path)
@@ -97,7 +106,7 @@ def index_news_lda(index_target_path,
     return t
 
 def compute_nearest_neighbours_lda(path_to_index,
-                                   lda_model_path="model/lda_100.model",
+                                   lda_model_path="model/lda.model",
                                    dict_path="dictionary/all_of_words.dict",
                                    number_of_nearest_neighbours=10,
                                    index_dimension=100,
@@ -146,8 +155,8 @@ def compute_nearest_neighbours_fast_text(path_to_index,number_of_nearest_neighbo
         collection.replace_one({"_id":document_id},modified)
 
 def compute_nearest_neighbours_doc2vec(path_to_index,
-                                       doc2vec_model_path="model/doc2vec_400.model",
-                                       number_of_nearest_neighbours=10,
+                                       doc2vec_model_path="model/doc2vec.model",
+                                       number_of_nearest_neighbours=200,
                                        index_dimension=400,
                                        show_sentence=True,
                                        verbose=True):
@@ -155,12 +164,13 @@ def compute_nearest_neighbours_doc2vec(path_to_index,
     u = AnnoyIndex(f)
     u.load(path_to_index)
     doc2vec = gensim.models.Doc2Vec.load(doc2vec_model_path)
-    # doc2vec.init_sims(replace=True)
     for document in collection.find():
-        tokens = document["content"].split()
+        cleaned = clean(document["content"])
+        tokens = cleaned.split()
         vector = doc2vec.infer_vector(tokens)
         sim_idx = u.get_nns_by_vector(vector, number_of_nearest_neighbours)
-
+        if verbose:
+            print("doc_id: ",document["integer_id"])
         nearest_neighbour_ids = []
 
         for idx in sim_idx:
@@ -169,7 +179,8 @@ def compute_nearest_neighbours_doc2vec(path_to_index,
 
         document_id = document["_id"]
         modified = document
-        modified["related_news"] = nearest_neighbour_ids
+        del(modified["_id"])
+        modified["related_news_doc2vec"] = nearest_neighbour_ids
         collection.replace_one({"_id":document_id},modified)
 
 def query_lda_with_file(file_path,lda_model,
@@ -204,6 +215,37 @@ def query_doc2vec_with_file(file_path,doc2vec_model,
     vector = doc2vec_model.infer_vector(txt.split())
     return annoy_index.get_nns_by_vector(vector,n,include_distances=include_distances)
 
+def compute_sub_lda_topics():
+    i = 0
+    for document in collection.find():
+        print(i)
+        i += 1
+        subcollection = []
+        for d in document["related_news_doc2vec"]:
+            doc = collection.find_one({"_id":d})
+            subcollection.append(doc)
+
+        dimension = 10
+        # print(subcollection)
+        lda_model,dictionary = mini_lda_model(subcollection,num_topics=dimension)
+        doc_vector = lda_vector(clean(document["content"]),lda_model,dictionary,dimension)
+        lda_jensen_shannon_divergences = []
+        document_id = document["_id"]
+        for related in subcollection:
+            cleaned = clean(related["content"])
+            related_vector = lda_vector(cleaned,lda_model,dictionary,dimension)
+            lda_jensen_shannon_divergences.append((jensen_shannon_divergence(doc_vector,related_vector),related["_id"]))
+
+        sorted_related = sorted(lda_jensen_shannon_divergences,key = lambda x: x[0])
+        sorted_divergence = [s[0] for s in sorted_related ]
+        sorted_object_id_by_divergence = [s[1] for s in sorted_related ]
+        print(sorted_related)
+        modified = document
+        del(modified["_id"])
+        modified["lda_jensen_shannon_divergences"] = sorted_divergence
+        modified["object_id_by_divergence"] = sorted_object_id_by_divergence
+        collection.replace_one({"_id":document_id},modified)
+
+
 if __name__ == "__main__":
-    # index_news("similarity_index/annoy_index",tree_size=300)
-    compute_nearest_neighbours("similarity_index/annoy_index")
+    pass

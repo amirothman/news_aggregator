@@ -54,7 +54,22 @@ def crawl():
                 "http://hosted2.ap.org/atom/APDEFAULT/3d281c11a96b4ad082fe88aa0db04305",
                 "http://apps.shareholder.com/rss/rss.aspx?channels=7142&companyid=ABEA-4M7DG8&sh_auth=2654998770%2E0%2E0%2E42600%2E95aa53563651b169e9250a1144c817be",
                 "http://www.ibtimes.co.uk/rss/world",
-                "http://www.astm.org/RSS/NS.rss"
+                "http://www.astm.org/RSS/NS.rss",
+                "http://rss.cbc.ca/lineup/topstories.xml",
+                "http://rss.cbc.ca/lineup/world.xml",
+                "http://www.smh.com.au/rssheadlines",
+                "http://www.heraldsun.com.au/rss",
+                "http://www.heraldsun.com.au/sport/afl/rss",
+                "http://www.news.com.au/national/rss",
+                "http://www.news.com.au/world/rss",
+                "http://www.news.com.au/entertainment/rss",
+                "http://www.news.com.au/technology/rss",
+                "http://www.news.com.au/sport/rss",
+                "http://www.newstimeafrica.com/feed",
+                # "http://allafrica.com/tools/headlines/rdf/latest/headlines.rdf",
+                "http://www.aps.dz/en/world?format=feed",
+                "http://www.aps.dz/en/economy?format=feed",
+                "http://www.perthnow.com.au/news/rss",
 
                 # Malaysian news
                 # "http://www.agendadaily.com/index.php?format=feed&type=rss",
@@ -76,38 +91,41 @@ def crawl():
 
     for feed in rss_feeds:
         parsed_feed = feedparser.parse(feed)
+        try:
+            links_dates = [ (el["link"],el["published"],el["title"]) for el in parsed_feed.entries]
 
-        links_dates = [ (el["link"],el["published"],el["title"]) for el in parsed_feed.entries]
+            for link,date,title in links_dates:
+                if not collection.find_one({"link":link}):
+                    print(link)
+                    date_parsed = parse(date)
+                    content = extract_content(link)
+                    file_name_to_save = re.sub(r"\W","_",link)
 
-        for link,date,title in links_dates:
-            if not collection.find_one({"link":link}):
-                date_parsed = parse(date)
-                content = extract_content(link)
-                file_name_to_save = re.sub(r"\W","_",link)
+                    # summarized = summarize(content, word_count=50)
+                    n = datetime.now()
+                    time_string = "{}{}{}{}{}{}{}".format(n.year,n.month,n.day,n.hour,n.minute,n.second,n.microsecond)
+                    article_dict = {"title":title,
+                                    "content":content,
+                                    "link":link,
+                                    "day":date_parsed.day,
+                                    "month":date_parsed.month,
+                                    "year":date_parsed.year,
+                                    "time_string":time_string
+                                    # "summarize":summarized
+                                    }
 
-                # summarized = summarize(content, word_count=50)
-                n = datetime.now()
-                time_string = "{}{}{}{}{}{}{}".format(n.year,n.month,n.day,n.hour,n.minute,n.second,n.microsecond)
-                article_dict = {"title":title,
-                                "content":content,
-                                "link":link,
-                                "day":date_parsed.day,
-                                "month":date_parsed.month,
-                                "year":date_parsed.year,
-                                "time_string":time_string
-                                # "summarize":summarized
-                                }
-
-                json_string = json.dumps(article_dict, sort_keys=True, indent=4)
+                    json_string = json.dumps(article_dict, sort_keys=True, indent=4)
 
 
-                print(json_string)
-                collection.insert_one(article_dict)
-                new_docs += 1
-            else:
-                print(link,' already saved')
-            # with(open("collection/{0}.json".format(file_name_to_save),"w")) as f:
-            #     f.write(json_string)
+                    print(json_string)
+                    collection.insert_one(article_dict)
+                    new_docs += 1
+                else:
+                    print(link,' already saved')
+                # with(open("collection/{0}.json".format(file_name_to_save),"w")) as f:
+                #     f.write(json_string)
+        except KeyError:
+            print("KeyError")
 
     return new_docs
 

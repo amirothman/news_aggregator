@@ -34,7 +34,7 @@ def recalculate():
 
 total_new_docs = 0
 #
-recalculate()
+# recalculate()
 while True:
     print("crawwling")
     new_docs = crawl()
@@ -43,6 +43,3 @@ while True:
     if total_new_docs > 300:
         recalculate()
         total_new_docs = 0
-
-    print("sleeping")
-    time.sleep(500)

@@ -29,9 +29,9 @@ def update_integer_id():
         # print(document)
         idx += 1
 
-def index_news(index_target_path,
-               doc2vec_model_path="model/doc2vec_400.model",
-               index_dimension=400,tree_size=20):
+def index_news_doc2vec(index_target_path,
+                       doc2vec_model_path="model/doc2vec_400.model",
+                       index_dimension=400,tree_size=20):
 
     doc2vec = gensim.models.Doc2Vec.load(doc2vec_model_path)
     # doc2vec.init_sims(replace=False)
@@ -145,12 +145,12 @@ def compute_nearest_neighbours_fast_text(path_to_index,number_of_nearest_neighbo
         modified["related_news"] = nearest_neighbour_ids
         collection.replace_one({"_id":document_id},modified)
 
-def compute_nearest_neighbours(path_to_index,
-                               doc2vec_model_path="model/doc2vec_400.model",
-                               number_of_nearest_neighbours=10,
-                               index_dimension=400,
-                               show_sentence=True,
-                               verbose=True):
+def compute_nearest_neighbours_doc2vec(path_to_index,
+                                       doc2vec_model_path="model/doc2vec_400.model",
+                                       number_of_nearest_neighbours=10,
+                                       index_dimension=400,
+                                       show_sentence=True,
+                                       verbose=True):
     f = index_dimension
     u = AnnoyIndex(f)
     u.load(path_to_index)

@@ -13,7 +13,7 @@ def tagged_docs():
         doc_id = str(d["_id"])
         yield models.doc2vec.TaggedDocument(d["content"].split(),[doc_id])
 
-def update_doc2vec_model(model_path="model/doc2vec_400.model",size=400,min_count=5):
+def update_doc2vec_model(model_path="model/doc2vec.model",size=400,min_count=5):
     doc2vec = models.doc2vec.Doc2Vec(tagged_docs(), size=size, window=8, min_count=min_count, workers=6)
     doc2vec.save(model_path)
     return doc2vec

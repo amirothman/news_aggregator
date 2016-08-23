@@ -3,3 +3,4 @@ model/*
 raw_corpus/*
 similarity_index/*
 textfiles/*
+corpus/*

@@ -34,10 +34,10 @@ def recalculate():
 
 total_new_docs = 0
 #
+recalculate()
 while True:
     print("crawwling")
     new_docs = crawl()
-    recalculate()
     total_new_docs += new_docs
     print(total_new_docs)
     if total_new_docs > 300:

@@ -17,10 +17,14 @@ def train_fast_text():
     subprocess.run(["./fasttext","skipgram","-input","textfiles/tempfile_input.txt","-output","model/fast_text"])
 
 def query_fast_text(text):
-    subprocess.run(["sh","fast_text_vector.sh",text])
-    p = Path("textfiles/fast_text_word_vectors.txt")
+    stdout = subprocess.check_output(["sh","fast_text_vector.sh",text])
+    # stdout = process.communicate()[0]
+    # stdout_string = str(stdout)
+    # print(stdout.split(b'\n'))
+
     vector = []
-    for line in p.read_text().split("\n")[:-1]:
+    for line in stdout.split(b'\n')[:-1]:
+        # print(line)
         row = []
         for n in line.split()[1:]:
             try:
@@ -38,12 +42,11 @@ def query_fast_text(text):
             vector.append(np.array([0.0]*100))
         # print(row)
     v = np.array(vector)
-    print(v.shape)
+    # print(v.shape)
     return np.sum(v,axis=0)/v.shape[0]
 
-    
+
 if __name__ == '__main__':
     # train_fast_text()
     v = query_fast_text("minister dying now \asd k alsdlkalsndkas\ ds")
-    summed = np.sum(v,axis=0)
-    print(summed)
+    print(v)

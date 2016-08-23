@@ -1,6 +1,4 @@
-from corpus_dictionary import recreate_dictionary
-from modelling import update_doc2vec_model,google_news_model,update_lda_model
-from similarity import index_news_doc2vec,compute_nearest_neighbours_doc2vec,index_news_lda,compute_nearest_neighbours_lda,compute_nearest_neighbours_fast_text,index_fast_text, compute_sub_lda_topics
+from similarity import compute_nearest_neighbours_fast_text,index_fast_text, compute_sub_lda_topics
 from crawler import crawl
 from fast_text import train_fast_text
 import time

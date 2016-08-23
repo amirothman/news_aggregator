@@ -6,8 +6,8 @@ db = client['crawled_news']
 collection = db['crawled_news']
 
 def all_of_words():
-    yield (doc["content"].split() for doc in collection.find())
-
+    for doc in collection.find():
+        yield doc["content"].split()
 
 class CustomCorpus(object):
     def __init__(self):
@@ -18,10 +18,10 @@ class CustomCorpus(object):
         for tokens in all_of_words():
             yield self.dictionary.doc2bow(tokens)
 
-def recreate_dictionary():
+def recreate_dictionary(dict_path = 'dictionary/all_of_words.dict', corpus_path = 'corpus/all_of_words.mm'):
     corpus = CustomCorpus() # create a dictionary
-    corpus.dictionary.save('dictionary/all_of_words.dict')
-    corpora.MmCorpus.serialize('corpus/all_of_words.mm', corpus)
+    corpus.dictionary.save(dict_path)
+    corpora.MmCorpus.serialize(corpus_path, corpus)
 
 if __name__ == "__main__":
     corpus = CustomCorpus() # create a dictionary

@@ -6,6 +6,7 @@ from extract import extract_from_url
 from collections import defaultdict
 from pymongo import MongoClient
 from bson.objectid import ObjectId
+import numpy as np
 
 client = MongoClient()
 db = client['crawled_news']
@@ -21,6 +22,7 @@ def update_integer_id():
         document_id = document["_id"]
         modified = document
         modified["integer_id"] = idx
+        del(modified["_id"])
         collection.replace_one({"_id":document_id},modified)
         # print(idx)
         # print(document)
@@ -42,12 +44,105 @@ def index_news(index_target_path,
         vec = doc2vec.infer_vector(tokens)
         # print(document)
         t.add_item(document["integer_id"],vec)
-        print("Doc count:",counter)
+        if counter % 100 == 0:
+            print("Doc count:",counter)
         counter += 1
 
     t.build(tree_size)
     t.save(index_target_path)
     return t
+
+def index_fast_text(index_target_path,tree_size=20):
+    update_integer_id()
+    f = 100
+    t = AnnoyIndex(f)
+    print("indexing fast text")
+    for document in collection.find():
+        vector = query_fast_text(document["content"])
+        t.add_item(document["integer_id"],vector)
+        print("doc count:", document["integer_id"])
+    t.build(tree_size)
+    t.save(index_target_path)
+    return t
+
+def lda_vector(text,lda_model,dictionary,dimension):
+    tokens = text.split()
+    doc_bow = dictionary.doc2bow(tokens)
+    _formed = np.zeros(dimension)
+    _lda = lda_model[doc_bow]
+    for lda_idx,val in _lda:
+        _formed[lda_idx] = val
+    return _formed
+
+def index_news_lda(index_target_path,
+                   dict_path="dictionary/all_of_words.dict",
+                   lda_model_path="model/lda_100.model",
+                   index_dimension=100,tree_size=20):
+
+    dictionary = gensim.corpora.dictionary.Dictionary.load(dict_path)
+    lda = gensim.models.ldamulticore.LdaMulticore.load(lda_model_path)
+
+    t = AnnoyIndex(index_dimension)
+    update_integer_id()
+    print("Indexing LDA")
+    for document in collection.find():
+        vector = lda_vector(document["content"],lda,dictionary,index_dimension)
+        t.add_item(document["integer_id"],vector)
+        if document["integer_id"] % 100 == 0:
+            print("Doc id:",document["integer_id"])
+
+    t.build(tree_size)
+    t.save(index_target_path)
+    return t
+
+def compute_nearest_neighbours_lda(path_to_index,
+                                   lda_model_path="model/lda_100.model",
+                                   dict_path="dictionary/all_of_words.dict",
+                                   number_of_nearest_neighbours=10,
+                                   index_dimension=100,
+                                   show_sentence=True,
+                                   verbose=True):
+    u = AnnoyIndex(index_dimension)
+    u.load(path_to_index)
+    lda = gensim.models.ldamulticore.LdaMulticore.load(lda_model_path)
+    dictionary = gensim.corpora.dictionary.Dictionary.load(dict_path)
+    for document in collection.find():
+        vector = lda_vector(document["content"],lda,dictionary,index_dimension)
+        sim_idx = u.get_nns_by_vector(vector, number_of_nearest_neighbours)
+
+        nearest_neighbour_ids = []
+
+        for idx in sim_idx:
+            neighbour = collection.find_one({"integer_id":idx})
+            if neighbour:
+                nearest_neighbour_ids.append(neighbour["_id"])
+
+        document_id = document["_id"]
+        modified = document
+        modified["related_news"] = nearest_neighbour_ids
+        del(modified["_id"])
+        collection.replace_one({"_id":document_id},modified)
+
+def compute_nearest_neighbours_fast_text(path_to_index,number_of_nearest_neighbours=10):
+    f = 100
+    u = AnnoyIndex(f)
+    u.load(path_to_index)
+
+    for document in collection.find():
+        vector = query_fast_text(document["content"])
+        sim_idx = u.get_nns_by_vector(vector,number_of_nearest_neighbours)
+
+        nearest_neighbour_ids = []
+
+        for idx in sim_idx:
+            neighbour = collection.find_one({"integer_id":idx})
+            nearest_neighbour_ids.append(neighbour["_id"])
+
+        document_id = document["_id"]
+        modified = document
+        del(modified["_id"])
+        modified["related_news"] = nearest_neighbour_ids
+        collection.replace_one({"_id":document_id},modified)
 
 def compute_nearest_neighbours(path_to_index,
                                doc2vec_model_path="model/doc2vec_400.model",

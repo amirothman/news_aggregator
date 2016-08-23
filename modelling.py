@@ -18,18 +18,9 @@ def update_doc2vec_model(model_path="model/doc2vec_400.model",size=400,min_count
     doc2vec.save(model_path)
     return doc2vec
 
-def lda_vector(text,lda_model,dictionary,dimension):
-    tokens = text.split()
-    doc_bow = dictionary.doc2bow(tokens)
-    _formed = np.zeros(dimension)
-    _lda = lda_model[doc_bow]
-    for lda_idx,val in _lda:
-        _formed[lda_idx] = val
-    return _formed
-
-def update_lda_model(model_path="model/lda_100.model",size=100):
-    corpus = corpora.mmcorpus.MmCorpus('corpus/all_of_words.mm')
-    # print("LDA Topic Modelling")
+def update_lda_model(model_path="model/lda_100.model",size=100,corpus_path='corpus/all_of_words.mm'):
+    corpus = corpora.mmcorpus.MmCorpus(corpus_path)
+    print("LDA Topic Modelling")
     lda = models.ldamulticore.LdaMulticore(corpus,num_topics=size,eta="auto",workers=6)
     lda.save(model_path)
     return lda

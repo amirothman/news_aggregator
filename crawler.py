@@ -15,9 +15,7 @@ def extract_content(link):
     r  = requests.get(link)
     html = r.text
     readable = Document(html).summary()
-    cleaned = BeautifulSoup(readable,"lxml").text
-    c = clean(cleaned)
-    return c
+    return BeautifulSoup(readable,"lxml").text
 
 
 def crawl():
@@ -67,7 +65,7 @@ def crawl():
                 #  "http://feeds.feedburner.com/malaysiandigest/Xrpu",
                  "http://malaysia-chronicle.com/index.php?option=com_k2&view=itemlist&format=feed&type=rss&Itemid=2",
                  "http://www.thesundaily.my/rss",
-                 "http://themalaysianreserve.com/new/rss.xml",
+                #  "http://themalaysianreserve.com/new/rss.xml",
                  "https://www.freemalaysiatoday.com/category/nation/feed",
                  "http://www.themalaymailonline.com/feed/rss/malaysia",
                 #  "http://www.harakahdaily.net/index.php?format=feed&type=rss",

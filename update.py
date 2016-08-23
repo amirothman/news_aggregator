@@ -7,51 +7,42 @@ import time
 
 def recalculate():
 
+    print("modelling")
+    train_fast_text()
+
+    print("re-indexing")
+    index_fast_text("similarity_index/fast_text")
+
+    print("get nearest neighours")
+    compute_nearest_neighbours_fast_text("similarity_index/fast_text",number_of_nearest_neighbours=300)
+
     # print("modelling")
     # update_doc2vec_model()
     #
     # print("re-indexing")
     # index_news_doc2vec("similarity_index/doc2vec")
 
-    print("compute nearest neighbours doc2vec")
+    # print("compute nearest neighbours doc2vec")
     # compute_nearest_neighbours_doc2vec("similarity_index/doc2vec",number_of_nearest_neighbours=200)
 
     print("compute sub lda topics")
-    compute_sub_lda_topics()
-    # print("modelling")
-    # train_fast_text()
+    compute_sub_lda_topics(related_key="related_news_fast_text")
     #
-    # print("re-indexing")
-    # index_fast_text("similarity_index/fast_text")
-    #
-    # print("get nearest neighours")
-    # compute_nearest_neighbours_fast_text("similarity_index/fast_text")
 
 #
-recalculate()
 
 
-# total_new_docs = 0
-# #
-# while True:
-#     print("crawwling")
-#     new_docs = crawl()
-#     total_new_docs += new_docs
-#     print(total_new_docs)
-#     if total_new_docs > 300:
-#         recalculate()
-#         total_new_docs = 0
-#         # print("recreate corpus")
-#         # recreate_dictionary()
-#         #
-#         # print("modelling")
-#         # update_lda_model()
-#         #
-#         # print("re-indexing")
-#         # index_news_lda("similarity_index/annoy_index_lda")
-#         #
-#         # print("get nearest neighours")
-#         # compute_nearest_neighbours_lda("similarity_index/annoy_index_lda")
+total_new_docs = 0
 #
-#     print("sleeping")
-#     time.sleep(500)
+while True:
+    print("crawwling")
+    new_docs = crawl()
+    recalculate()
+    total_new_docs += new_docs
+    print(total_new_docs)
+    if total_new_docs > 300:
+        recalculate()
+        total_new_docs = 0
+
+    print("sleeping")
+    time.sleep(500)

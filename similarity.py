@@ -133,7 +133,7 @@ def compute_nearest_neighbours_lda(path_to_index,
         del(modified["_id"])
         collection.replace_one({"_id":document_id},modified)
 
-def compute_nearest_neighbours_fast_text(path_to_index,number_of_nearest_neighbours=10):
+def compute_nearest_neighbours_fast_text(path_to_index,number_of_nearest_neighbours=200):
     f = 100
     u = AnnoyIndex(f)
     u.load(path_to_index)
@@ -143,7 +143,7 @@ def compute_nearest_neighbours_fast_text(path_to_index,number_of_nearest_neighbo
         sim_idx = u.get_nns_by_vector(vector,number_of_nearest_neighbours)
 
         nearest_neighbour_ids = []
-
+        print(document["integer_id"])
         for idx in sim_idx:
             neighbour = collection.find_one({"integer_id":idx})
             nearest_neighbour_ids.append(neighbour["_id"])
@@ -151,7 +151,7 @@ def compute_nearest_neighbours_fast_text(path_to_index,number_of_nearest_neighbo
         document_id = document["_id"]
         modified = document
         del(modified["_id"])
-        modified["related_news"] = nearest_neighbour_ids
+        modified["related_news_fast_text"] = nearest_neighbour_ids
         collection.replace_one({"_id":document_id},modified)
 
 def compute_nearest_neighbours_doc2vec(path_to_index,
@@ -215,13 +215,13 @@ def query_doc2vec_with_file(file_path,doc2vec_model,
     vector = doc2vec_model.infer_vector(txt.split())
     return annoy_index.get_nns_by_vector(vector,n,include_distances=include_distances)
 
-def compute_sub_lda_topics():
+def compute_sub_lda_topics(related_key="related_news_doc2vec"):
     i = 0
     for document in collection.find():
         print(i)
         i += 1
         subcollection = []
-        for d in document["related_news_doc2vec"]:
+        for d in document[related_key]:
             doc = collection.find_one({"_id":d})
             subcollection.append(doc)
 

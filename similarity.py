@@ -11,6 +11,7 @@ from fast_text import query_fast_text
 from modelling import mini_lda_model
 from scipy.stats import entropy
 from numpy.linalg import norm
+import subprocess
 
 client = MongoClient()
 db = client['crawled_news']
@@ -62,13 +63,48 @@ def index_news_doc2vec(index_target_path,
     t.save(index_target_path)
     return t
 
+def fast_text_bulk():
+    subprocess.run(["sh","fast_text_bulk.sh"])
+
+def fast_text_vector(text,dictionary):
+    container = []
+    for word in text.split():
+        try:
+            container.append(dictionary[word])
+        except KeyError:
+            pass
+    return np.sum(container,axis=0)/len(container)
+
+def fast_text_dictionary():
+    temp_dict = {}
+    with open("textfiles/fasttext_word_vector.txt","r") as word_vector_file:
+        for line in word_vector_file:
+            splitted = line.split()
+            list_string = splitted[1:]
+            if len(list_string) == 100:
+                as_vector = [float(v) for v in list_string]
+                temp_dict[splitted[0]] = np.array(as_vector)
+    return temp_dict
+
 def index_fast_text(index_target_path,tree_size=20):
     update_integer_id()
     f = 100
     t = AnnoyIndex(f)
     print("indexing fast text")
+    with open("textfiles/temp_fast_text","w") as temp_file:
+        counter = 0
+        for document in collection.find():
+            print(counter)
+            counter += 1
+            temp_file.write(document["content"])
+            temp_file.write("\n")
+
+    fast_text_bulk()
+
     for document in collection.find():
-        vector = query_fast_text(document["content"])
+        dictionary = fast_text_dictionary()
+        vector = fast_text_vector(document["content"],dictionary)
+        # vector = query_fast_text(document["content"])
         t.add_item(document["integer_id"],vector[:100])
         print("doc count:", document["integer_id"])
     t.build(tree_size)
@@ -138,8 +174,10 @@ def compute_nearest_neighbours_fast_text(path_to_index,number_of_nearest_neighbo
     u = AnnoyIndex(f)
     u.load(path_to_index)
 
+    dictionary = fast_text_dictionary()
+
     for document in collection.find():
-        vector = query_fast_text(document["content"])
+        vector = fast_text_vector(document["content"],dictionary)
         sim_idx = u.get_nns_by_vector(vector,number_of_nearest_neighbours)
 
         nearest_neighbour_ids = []
@@ -248,4 +286,4 @@ def compute_sub_lda_topics(related_key="related_news_doc2vec"):
 
 
 if __name__ == "__main__":
-    pass
+    index_fast_text("similarity_index/tmp")

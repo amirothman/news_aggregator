@@ -34,9 +34,9 @@ def recalculate():
 
 total_new_docs = 0
 #
-# recalculate()
+recalculate()
 while True:
-    print("crawwling")
+    print("crawling")
     new_docs = crawl()
     total_new_docs += new_docs
     print(total_new_docs)

@@ -5,35 +5,40 @@ from crawler import crawl
 from fast_text import train_fast_text
 import time
 
-print("modelling")
-# train_fast_text()
+def recalculate():
 
-print("re-indexing")
-index_fast_text("similarity_index/fast_text")
+    print("modelling")
+    train_fast_text()
 
-print("get nearest neighours")
-compute_nearest_neighbours_fast_text("similarity_index/fast_text")
+    print("re-indexing")
+    index_fast_text("similarity_index/fast_text")
+
+    print("get nearest neighours")
+    compute_nearest_neighbours_fast_text("similarity_index/fast_text")
 
 #
-# total_new_docs = 0
-# #
-# while True:
-#     print("crawwling")
-#     new_docs = crawl()
-#     total_new_docs += new_docs
-#     print(total_new_docs)
-#     if total_new_docs > 300:
-#         print("recreate corpus")
-#         recreate_dictionary()
+recalculate()
+total_new_docs = 0
 #
-#         print("modelling")
-#         update_lda_model()
-#
-#         print("re-indexing")
-#         index_news_lda("similarity_index/annoy_index_lda")
-#
-#         print("get nearest neighours")
-#         compute_nearest_neighbours_lda("similarity_index/annoy_index_lda")
-#
-#     print("sleeping")
-#     time.sleep(500)
+while True:
+    print("crawwling")
+    new_docs = crawl()
+    total_new_docs += new_docs
+    print(total_new_docs)
+    if total_new_docs > 300:
+        recalculate()
+        total_new_docs = 0
+        # print("recreate corpus")
+        # recreate_dictionary()
+        #
+        # print("modelling")
+        # update_lda_model()
+        #
+        # print("re-indexing")
+        # index_news_lda("similarity_index/annoy_index_lda")
+        #
+        # print("get nearest neighours")
+        # compute_nearest_neighbours_lda("similarity_index/annoy_index_lda")
+
+    print("sleeping")
+    time.sleep(500)

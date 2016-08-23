@@ -40,6 +40,8 @@ def query_fast_text(text):
     v = np.array(vector)
     print(v.shape)
     return np.sum(v,axis=0)/v.shape[0]
+
+    
 if __name__ == '__main__':
     # train_fast_text()
     v = query_fast_text("minister dying now \asd k alsdlkalsndkas\ ds")

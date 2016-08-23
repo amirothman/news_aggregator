@@ -7,6 +7,7 @@ from collections import defaultdict
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 import numpy as np
+from fast_text import query_fast_text
 
 client = MongoClient()
 db = client['crawled_news']
@@ -59,7 +60,7 @@ def index_fast_text(index_target_path,tree_size=20):
     print("indexing fast text")
     for document in collection.find():
         vector = query_fast_text(document["content"])
-        t.add_item(document["integer_id"],vector)
+        t.add_item(document["integer_id"],vector[:100])
         print("doc count:", document["integer_id"])
     t.build(tree_size)
     t.save(index_target_path)

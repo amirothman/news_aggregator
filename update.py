@@ -14,7 +14,7 @@ def recalculate():
     index_fast_text("similarity_index/fast_text")
 
     print("get nearest neighours")
-    compute_nearest_neighbours_fast_text("similarity_index/fast_text",number_of_nearest_neighbours=300)
+    compute_nearest_neighbours_fast_text("similarity_index/fast_text",number_of_nearest_neighbours=50)
 
     # print("modelling")
     # update_doc2vec_model()

@@ -101,8 +101,9 @@ def index_fast_text(index_target_path,tree_size=20):
 
     fast_text_bulk()
 
+    dictionary = fast_text_dictionary()
+
     for document in collection.find():
-        dictionary = fast_text_dictionary()
         vector = fast_text_vector(document["content"],dictionary)
         # vector = query_fast_text(document["content"])
         t.add_item(document["integer_id"],vector[:100])
@@ -179,7 +180,6 @@ def compute_nearest_neighbours_fast_text(path_to_index,number_of_nearest_neighbo
     for document in collection.find():
         vector = fast_text_vector(document["content"],dictionary)
         sim_idx = u.get_nns_by_vector(vector,number_of_nearest_neighbours)
-
         nearest_neighbour_ids = []
         print(document["integer_id"])
         for idx in sim_idx:

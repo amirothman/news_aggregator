@@ -12,6 +12,7 @@ from modelling import mini_lda_model
 from scipy.stats import entropy
 from numpy.linalg import norm
 import subprocess
+import redis
 
 client = MongoClient()
 db = client['crawled_news']
@@ -75,6 +76,21 @@ def fast_text_vector(text,dictionary):
             pass
     return np.sum(container,axis=0)/len(container)
 
+def fast_text_vector_from_redis(text,redis_connection):
+    container = []
+    for word in text.split():
+        str_word_vector = redis_connection.get(word)
+        if str_word_vector:
+            lst_word_vector = [float(v) for v in str_word_vector.split()]
+            if len(lst_word_vector) == 100:
+                np_array_word_vector = np.array(lst_word_vector)
+                container.append(np_array_word_vector)
+
+    if len(container) == 0:
+        return np.zeros(100)
+    else:
+        return np.sum(container,axis=0)/len(container)
+
 def fast_text_dictionary():
     temp_dict = {}
     with open("textfiles/fasttext_word_vector.txt","r") as word_vector_file:
@@ -86,26 +102,38 @@ def fast_text_dictionary():
                 temp_dict[splitted[0]] = np.array(as_vector)
     return temp_dict
 
+def fast_text_to_redis(redis_connection):
+
+    with open("textfiles/fasttext_word_vector.txt","r") as word_vector_file:
+        for line in word_vector_file:
+            splitted = line.split()
+            word = splitted[0]
+            list_string = splitted[1:]
+            if len(list_string) == 100:
+                redis_connection.set(word," ".join(splitted[1:]))
+
 def index_fast_text(index_target_path,tree_size=20):
+    r = redis.StrictRedis(host='localhost', port=6379, db=0)
     update_integer_id()
     f = 100
     t = AnnoyIndex(f)
-    print("indexing fast text")
+    print("writing raw text to temp file")
     with open("textfiles/temp_fast_text","w") as temp_file:
         counter = 0
         for document in collection.find():
-            print(counter)
             counter += 1
             temp_file.write(document["content"])
             temp_file.write("\n")
 
+    print("build fastText vectors")
     fast_text_bulk()
+    print("transfer to redis")
+    fast_text_to_redis(r)
 
-    dictionary = fast_text_dictionary()
-
+    print("indexing fast text")
     for document in collection.find():
-        vector = fast_text_vector(document["content"],dictionary)
-        # vector = query_fast_text(document["content"])
+        # print(document)
+        vector = fast_text_vector_from_redis(document["content"],r)
         t.add_item(document["integer_id"],vector[:100])
         print("doc count:", document["integer_id"])
     t.build(tree_size)
@@ -171,14 +199,13 @@ def compute_nearest_neighbours_lda(path_to_index,
         collection.replace_one({"_id":document_id},modified)
 
 def compute_nearest_neighbours_fast_text(path_to_index,number_of_nearest_neighbours=200):
+    r = redis.StrictRedis(host='localhost', port=6379, db=0)
     f = 100
     u = AnnoyIndex(f)
     u.load(path_to_index)
 
-    dictionary = fast_text_dictionary()
-
     for document in collection.find():
-        vector = fast_text_vector(document["content"],dictionary)
+        vector = fast_text_vector_from_redis(document["content"],r)
         sim_idx = u.get_nns_by_vector(vector,number_of_nearest_neighbours)
         nearest_neighbour_ids = []
         print(document["integer_id"])
@@ -277,7 +304,7 @@ def compute_sub_lda_topics(related_key="related_news_doc2vec"):
         sorted_related = sorted(lda_jensen_shannon_divergences,key = lambda x: x[0])
         sorted_divergence = [s[0] for s in sorted_related ]
         sorted_object_id_by_divergence = [s[1] for s in sorted_related ]
-        print(sorted_related)
+        # print(sorted_related)
         modified = document
         del(modified["_id"])
         modified["lda_jensen_shannon_divergences"] = sorted_divergence
@@ -286,4 +313,6 @@ def compute_sub_lda_topics(related_key="related_news_doc2vec"):
 
 
 if __name__ == "__main__":
-    index_fast_text("similarity_index/tmp")
+    r = redis.StrictRedis(host='localhost', port=6379, db=0)
+    # fast_text_to_redis(r)
+    fast_text_vector_from_redis("Prime minister will be doing some crazy shit",r)

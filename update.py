@@ -20,7 +20,7 @@ def recalculate():
 
 total_new_docs = 0
 
-recalculate()
+# recalculate()
 
 while True:
     print("crawling")

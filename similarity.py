@@ -258,8 +258,8 @@ def compute_nearest_neighbours_fast_text_with_lda_divergence(path_to_index,lda_d
 
             lda_divergence.append((neighbour["_id"],jensen_shannon_divergence(lda_np,neighbour_lda_np)))
         sorted_lda = sorted(lda_divergence,key = lambda x: x[1])
-        sorted_divergence = [s[0] for s in sorted_lda ]
-        sorted_object_id_by_divergence = [s[1] for s in sorted_lda ]
+        sorted_object_id_by_divergence = [s[0] for s in sorted_lda ]
+        sorted_divergence = [s[1] for s in sorted_lda ]
         document_id = document["_id"]
         modified = document
         del(modified["_id"])

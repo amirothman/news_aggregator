@@ -283,6 +283,7 @@ def query_doc2vec_with_file(file_path,doc2vec_model,
 def compute_sub_lda_topics(related_key="related_news_doc2vec"):
     i = 0
     for document in collection.find():
+        document_id = document["_id"]
         print(i)
         i += 1
         subcollection = []
@@ -295,7 +296,6 @@ def compute_sub_lda_topics(related_key="related_news_doc2vec"):
         lda_model,dictionary = mini_lda_model(subcollection,num_topics=dimension)
         doc_vector = lda_vector(clean(document["content"]),lda_model,dictionary,dimension)
         lda_jensen_shannon_divergences = []
-        document_id = document["_id"]
         for related in subcollection:
             cleaned = clean(related["content"])
             related_vector = lda_vector(cleaned,lda_model,dictionary,dimension)
@@ -313,6 +313,6 @@ def compute_sub_lda_topics(related_key="related_news_doc2vec"):
 
 
 if __name__ == "__main__":
-    r = redis.StrictRedis(host='localhost', port=6379, db=0)
+    # r = redis.StrictRedis(host='localhost', port=6379, db=0)
     # fast_text_to_redis(r)
-    fast_text_vector_from_redis("Prime minister will be doing some crazy shit",r)
+    compute_sub_lda_topics(related_key="related_news_fast_text")

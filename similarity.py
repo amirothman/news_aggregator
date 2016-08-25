@@ -214,6 +214,8 @@ def compute_nearest_neighbours_fast_text(path_to_index,number_of_nearest_neighbo
         for idx in sim_idx:
             neighbour = collection.find_one({"integer_id":idx})
             if neighbour:
+                
+
                 nearest_neighbour_ids.append(neighbour["_id"])
 
         document_id = document["_id"]
@@ -320,6 +322,7 @@ def sort_by_lda_topics(lda_model,dictionary,related_key,dimension=100):
         document_id = document["_id"]
         if i%100 == 0:
             print(i)
+        i += 1
         doc_vector = lda_vector(clean(document["content"]),lda_model,dictionary,dimension)
 
         related_documents = []
@@ -329,9 +332,9 @@ def sort_by_lda_topics(lda_model,dictionary,related_key,dimension=100):
 
         lda_jensen_shannon_divergences = []
         for doc in related_documents:
-            cleaned = clean(related["content"])
+            cleaned = clean(doc["content"])
             related_vector = lda_vector(cleaned,lda_model,dictionary,dimension)
-            lda_jensen_shannon_divergences.append((jensen_shannon_divergence(doc_vector,related_vector),related["_id"]))
+            lda_jensen_shannon_divergences.append((jensen_shannon_divergence(doc_vector,related_vector),doc["_id"]))
 
         sorted_related = sorted(lda_jensen_shannon_divergences,key = lambda x: x[0])
         sorted_divergence = [s[0] for s in sorted_related ]

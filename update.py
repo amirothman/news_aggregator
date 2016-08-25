@@ -20,7 +20,7 @@ def recalculate():
     lda_model, dictionary = compute_complete_lda_topics("model/lda.model")
 
     print("sort related by lda topics")
-    sort_by_lda_topics(lda_model,dictionary,"related_news_fast_text",dimension=100)
+    sort_by_lda_topics(lda_model,dictionary,"related_news_fast_text")
 
 total_new_docs = 0
 

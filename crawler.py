@@ -10,6 +10,8 @@ from gensim.summarization import summarize
 from pymongo import MongoClient
 from preprocess_text import clean
 from datetime import datetime
+from pathlib import Path
+from similarity import fast_text_vector_from_redis
 
 def extract_content(link):
     r  = requests.get(link)
@@ -22,7 +24,8 @@ def crawl():
     client = MongoClient()
     db = client['crawled_news']
     collection = db['crawled_news']
-    # The more merrier. Using four just as example.
+    r = redis.StrictRedis(host='localhost', port=6379, db=0)
+
     new_docs = 0
     rss_feeds = [
 
@@ -49,10 +52,10 @@ def crawl():
                 "http://www.nytimes.com/services/xml/rss/nyt/World.xml",
                 "http://www.nytimes.com/services/xml/rss/nyt/US.xml",
                 "http://gulfnews.com/cmlink/1.446094",
-                "http://hosted2.ap.org/atom/APDEFAULT/cae69a7523db45408eeb2b3a98c0c9c5",
-                "http://hosted2.ap.org/atom/APDEFAULT/89ae8247abe8493fae24405546e9a1aa",
-                "http://hosted2.ap.org/atom/APDEFAULT/3d281c11a96b4ad082fe88aa0db04305",
-                "http://apps.shareholder.com/rss/rss.aspx?channels=7142&companyid=ABEA-4M7DG8&sh_auth=2654998770%2E0%2E0%2E42600%2E95aa53563651b169e9250a1144c817be",
+                # "http://hosted2.ap.org/atom/APDEFAULT/cae69a7523db45408eeb2b3a98c0c9c5",
+                # "http://hosted2.ap.org/atom/APDEFAULT/89ae8247abe8493fae24405546e9a1aa",
+                # "http://hosted2.ap.org/atom/APDEFAULT/3d281c11a96b4ad082fe88aa0db04305",
+                # "http://apps.shareholder.com/rss/rss.aspx?channels=7142&companyid=ABEA-4M7DG8&sh_auth=2654998770%2E0%2E0%2E42600%2E95aa53563651b169e9250a1144c817be",
                 "http://www.ibtimes.co.uk/rss/world",
                 "http://www.astm.org/RSS/NS.rss",
                 "http://rss.cbc.ca/lineup/topstories.xml",
@@ -75,7 +78,7 @@ def crawl():
                 # "http://www.agendadaily.com/index.php?format=feed&type=rss",
                  "http://www.malaysia-today.net/feed/",
                  "http://www.newsplus.my/feed/",
-                 "http://news.google.com/news?hl=en&gl=us&q=malaysiakini&um=1&ie=UTF-8&output=rss",
+                #  "http://news.google.com/news?hl=en&gl=us&q=malaysiakini&um=1&ie=UTF-8&output=rss",
                  "http://www.therakyatpost.com/category/news/feed/",
                 #  "http://feeds.feedburner.com/malaysiandigest/Xrpu",
                  "http://malaysia-chronicle.com/index.php?option=com_k2&view=itemlist&format=feed&type=rss&Itemid=2",
@@ -88,6 +91,14 @@ def crawl():
                  "http://www.thestar.com.my/rss/news/nation/",
                  "http://english.astroawani.com/rss/national/public"
                  ]
+
+    path_to_index = "similarity_index/fast_text"
+    p = Path(path_to_index)
+    if p.is_file():
+        u = AnnoyIndex(100)
+        u.load(path_to_index)
+
+
 
     for feed in rss_feeds:
         parsed_feed = feedparser.parse(feed)
@@ -114,9 +125,13 @@ def crawl():
                                     # "summarize":summarized
                                     }
 
+                    if p.is_file():
+                        vector = fast_text_vector_from_redis(content,r)
+                        sim_idx = u.get_nns_by_vector(vector,number_of_nearest_neighbours)
+                        sim_idx = set(sim_idx)
+                        nearest_neighbour_ids = [collection.find_one({"integer_id":idx})for idx in sim_idx]
+                        article_dict["related_news_fast_text"] = nearest_neighbour_ids
                     json_string = json.dumps(article_dict, sort_keys=True, indent=4)
-
-
                     print(json_string)
                     collection.insert_one(article_dict)
                     new_docs += 1

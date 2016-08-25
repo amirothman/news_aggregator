@@ -6,12 +6,13 @@ from readability.readability import Document
 from bs4 import BeautifulSoup
 import re
 import os
-from gensim.summarization import summarize
 from pymongo import MongoClient
 from preprocess_text import clean
 from datetime import datetime
 from pathlib import Path
 from similarity import fast_text_vector_from_redis
+import redis
+from annoy import AnnoyIndex
 
 def extract_content(link):
     r  = requests.get(link)

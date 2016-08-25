@@ -135,7 +135,8 @@ def index_fast_text(index_target_path,tree_size=20):
         # print(document)
         vector = fast_text_vector_from_redis(document["content"],r)
         t.add_item(document["integer_id"],vector[:100])
-        print("doc count:", document["integer_id"])
+        if document["integer_id"] % 100 == 0:
+            print("doc count:", document["integer_id"])
     t.build(tree_size)
     t.save(index_target_path)
     return t
@@ -208,10 +209,12 @@ def compute_nearest_neighbours_fast_text(path_to_index,number_of_nearest_neighbo
         vector = fast_text_vector_from_redis(document["content"],r)
         sim_idx = u.get_nns_by_vector(vector,number_of_nearest_neighbours)
         nearest_neighbour_ids = []
-        print(document["integer_id"])
+        if document["integer_id"] % 100 == 0:
+            print(document["integer_id"])
         for idx in sim_idx:
             neighbour = collection.find_one({"integer_id":idx})
-            nearest_neighbour_ids.append(neighbour["_id"])
+            if neighbour:
+                nearest_neighbour_ids.append(neighbour["_id"])
 
         document_id = document["_id"]
         modified = document
@@ -311,6 +314,34 @@ def compute_sub_lda_topics(related_key="related_news_doc2vec"):
         modified["object_id_by_divergence"] = sorted_object_id_by_divergence
         collection.replace_one({"_id":document_id},modified)
 
+def sort_by_lda_topics(lda_model,dictionary,related_key,dimension=100):
+    i = 0
+    for document in collection.find():
+        document_id = document["_id"]
+        if i%100 == 0:
+            print(i)
+        doc_vector = lda_vector(clean(document["content"]),lda_model,dictionary,dimension)
+
+        related_documents = []
+        for d in document[related_key]:
+            doc = collection.find_one({"_id":d})
+            related_documents.append(doc)
+
+        lda_jensen_shannon_divergences = []
+        for doc in related_documents:
+            cleaned = clean(related["content"])
+            related_vector = lda_vector(cleaned,lda_model,dictionary,dimension)
+            lda_jensen_shannon_divergences.append((jensen_shannon_divergence(doc_vector,related_vector),related["_id"]))
+
+        sorted_related = sorted(lda_jensen_shannon_divergences,key = lambda x: x[0])
+        sorted_divergence = [s[0] for s in sorted_related ]
+        sorted_object_id_by_divergence = [s[1] for s in sorted_related ]
+        # print(sorted_related)
+        modified = document
+        del(modified["_id"])
+        modified["lda_jensen_shannon_divergences"] = sorted_divergence
+        modified["object_id_by_divergence"] = sorted_object_id_by_divergence
+        collection.replace_one({"_id":document_id},modified)
 
 if __name__ == "__main__":
     # r = redis.StrictRedis(host='localhost', port=6379, db=0)

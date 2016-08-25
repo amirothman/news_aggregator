@@ -2,7 +2,7 @@ from gensim import corpora,models,utils
 import numpy as np
 from pymongo import MongoClient
 from preprocess_text import clean
-from corpus_dictionary import custom_corpus
+from corpus_dictionary import custom_corpus, CompleteCorpus
 
 client = MongoClient()
 db = client['crawled_news']
@@ -19,8 +19,7 @@ def update_doc2vec_model(model_path="model/doc2vec.model",size=400,min_count=5):
     doc2vec.save(model_path)
     return doc2vec
 
-def update_lda_model(model_path="model/lda.model",size=100,corpus_path='corpus/all_of_words.mm'):
-    corpus = corpora.mmcorpus.MmCorpus(corpus_path)
+def update_lda_model(corpus,model_path="model/lda.model",size=100):
     print("LDA Topic Modelling")
     lda = models.ldamulticore.LdaMulticore(corpus,num_topics=size,eta="auto",workers=6)
     lda.save(model_path)
@@ -38,16 +37,46 @@ def google_news_model(model_target_path="model/google_news_model.model",model_so
     doc2vec.save(model_target_path)
     return doc2vec
 
+def save_lda_topics_to_db(lda_model_path,dictionary):
+    lda = models.ldamulticore.LdaMulticore.load(lda_model_path)
+    i = 1
+    for document in collection.find():
+        if i%100 == 0:
+            print(i)
+        i += 1
+        document_id = document["_id"]
+        cleaned = clean(document["content"])
+        doc_bow = dictionary.doc2bow(cleaned.split())
+        modified = document
+        modified["lda_topics"] = lda[doc_bow]
+        del(modified["_id"])
+        collection.replace_one({"_id":document_id},modified)
+        # topic_ids = []
+        # topic_probabilities = []
+        # for topic_id,topic_probability in lda[doc_bow]:
+        #     topic_ids.append(topic_id)
+        #     topic_probabilities.append(topic_probability)
+
+def compute_complete_lda_topics(model_path,size=100):
+    corpus = CompleteCorpus()
+    lda = update_lda_model(corpus,model_path,size=100)
+    save_lda_topics_to_db(model_path,corpus.dictionary)
+    return lda, corpus.dictionary
+
 if __name__ == "__main__":
     # for el in quranic_sentences_with_docs():
     #     print(el)
-    print("doc2vec 400")
-    update_doc2vec_model()
+    # print("doc2vec 400")
+    # update_doc2vec_model()
     # quran_dictionary = corpora.dictionary.Dictionary.load("dictionary/quranic_ayat_en.dict")
 
 
     # LDA Topic Modelling
 
+    corpus = CompleteCorpus()
+    # update_lda_model(corpus)
+
+    save_lda_topics_to_db("model/lda.model",corpus.dictionary)
 
     # Doc2Vec Modelling
     #

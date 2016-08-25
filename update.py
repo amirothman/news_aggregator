@@ -1,4 +1,5 @@
-from similarity import compute_nearest_neighbours_fast_text,index_fast_text, compute_sub_lda_topics
+from similarity import compute_nearest_neighbours_fast_text,index_fast_text, sort_by_lda_topics
+from modelling import compute_complete_lda_topics
 from crawler import crawl
 from fast_text import train_fast_text
 import time
@@ -15,12 +16,15 @@ def recalculate():
     print("get nearest neighours")
     compute_nearest_neighbours_fast_text("similarity_index/fast_text",number_of_nearest_neighbours=50)
 
-    print("compute sub lda topics")
-    compute_sub_lda_topics(related_key="related_news_fast_text")
+    print("compute lda topics")
+    lda_model, dictionary = compute_complete_lda_topics("model/lda.model")
+
+    print("sort related by lda topics")
+    sort_by_lda_topics(lda_model,dictionary,"related_news_fast_text",dimension=100)
 
 total_new_docs = 0
 
-# recalculate()
+recalculate()
 
 while True:
     print("crawling")

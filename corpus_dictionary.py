@@ -27,6 +27,15 @@ class SubCorpus(object):
             yield self.dictionary.doc2bow(clean(l["content"]).split())
 
 
+class CompleteCorpus(object):
+    def __init__(self):
+        self.dictionary = corpora.Dictionary((clean(d["content"]).split() for d in collection.find()))
+        self.dictionary.filter_extremes(no_below=1, keep_n=30000) # check API docs for pruning params
+
+    def __iter__(self):
+        for l in collection.find():
+            yield self.dictionary.doc2bow(clean(l["content"]).split())
+
 def iterate_collection(collection):
     for doc in collection:
         cleaned = clean(doc["content"])
@@ -47,9 +56,15 @@ def custom_corpus(collection):
     # c = corpora.mmcorpus.MmCorpus("corpus/temp.mm")
     return corpus
 
+def custom_corpus(collection):
+    corpus = SubCorpus(collection)
+    # corpora.MmCorpus.serialize("corpus/temp.mm", corpus)
+    # c = corpora.mmcorpus.MmCorpus("corpus/temp.mm")
+    return corpus
+
 
 if __name__ == "__main__":
-    corpus = CustomCorpus() # create a dictionary
+    corpus = CompleteCorpus() # create a dictionary
     # corpus.dictionary
     # corpus.dictionary.save('dictionary/all_of_words.dict')
     # corpora.MmCorpus.serialize('corpus/all_of_words.mm', corpus)

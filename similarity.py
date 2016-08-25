@@ -214,13 +214,57 @@ def compute_nearest_neighbours_fast_text(path_to_index,number_of_nearest_neighbo
         for idx in sim_idx:
             neighbour = collection.find_one({"integer_id":idx})
             if neighbour:
-                
+
 
                 nearest_neighbour_ids.append(neighbour["_id"])
 
         document_id = document["_id"]
         modified = document
         del(modified["_id"])
+        modified["related_news_fast_text"] = nearest_neighbour_ids
+        collection.replace_one({"_id":document_id},modified)
+
+def compute_nearest_neighbours_fast_text_with_lda_divergence(path_to_index,lda_dimension=100,
+                                                             number_of_nearest_neighbours=200):
+    r = redis.StrictRedis(host='localhost', port=6379, db=0)
+    f = 100
+    u = AnnoyIndex(f)
+    u.load(path_to_index)
+
+    for document in collection.find():
+        vector = fast_text_vector_from_redis(document["content"],r)
+        lda_v = document["lda_topics"]
+        lda_np = np.zeros(lda_dimension)
+
+        for v in lda_v:
+            lda_np[v[0]] = v[1]
+
+        sim_idx = u.get_nns_by_vector(vector,number_of_nearest_neighbours)
+        nearest_neighbour_ids = []
+        lda_divergence = []
+        if document["integer_id"] % 100 == 0:
+            print(document["integer_id"])
+        for idx in sim_idx:
+            neighbour = collection.find_one({"integer_id":idx})
+            if neighbour:
+
+                nearest_neighbour_ids.append(neighbour["_id"])
+                # lda_divergence.append((neighbour["_id"],jensen_shannon_divergence(lda_v,lda_vector(clean(neighbour["content"])))))
+                neighbour_lda = neighbour["lda_topics"]
+                neighbour_lda_np = np.zeros(lda_dimension)
+
+                for v in neighbour_lda:
+                    neighbour_lda_np[v[0]] = v[1]
+
+            lda_divergence.append((neighbour["_id"],jensen_shannon_divergence(lda_np,neighbour_lda_np)))
+        sorted_lda = sorted(lda_divergence,key = lambda x: x[1])
+        sorted_divergence = [s[0] for s in sorted_lda ]
+        sorted_object_id_by_divergence = [s[1] for s in sorted_lda ]
+        document_id = document["_id"]
+        modified = document
+        del(modified["_id"])
+        modified["lda_jensen_shannon_divergences"] = sorted_divergence
+        modified["object_id_by_divergence"] = sorted_object_id_by_divergence
         modified["related_news_fast_text"] = nearest_neighbour_ids
         collection.replace_one({"_id":document_id},modified)
 

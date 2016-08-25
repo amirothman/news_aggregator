@@ -126,13 +126,13 @@ def crawl():
                                     # "summarize":summarized
                                     }
 
+                    json_string = json.dumps(article_dict, sort_keys=True, indent=4)
                     if p.is_file():
                         vector = fast_text_vector_from_redis(content,r)
-                        sim_idx = u.get_nns_by_vector(vector,number_of_nearest_neighbours)
+                        sim_idx = u.get_nns_by_vector(vector,200)
                         sim_idx = set(sim_idx)
                         nearest_neighbour_ids = [collection.find_one({"integer_id":idx})for idx in sim_idx]
                         article_dict["related_news_fast_text"] = nearest_neighbour_ids
-                    json_string = json.dumps(article_dict, sort_keys=True, indent=4)
                     print(json_string)
                     collection.insert_one(article_dict)
                     new_docs += 1

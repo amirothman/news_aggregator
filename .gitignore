@@ -4,3 +4,4 @@ raw_corpus/*
 similarity_index/*
 textfiles/*
 corpus/*
+dictionary/*

@@ -16,17 +16,11 @@ def recalculate():
     print("compute lda topics")
     compute_complete_lda_topics("model/lda.model")
     print("get nearest neighours")
-    compute_nearest_neighbours_fast_text_with_lda_divergence("similarity_index/fast_text",number_of_nearest_neighbours=50)
+    # compute_nearest_neighbours_fast_text("similarity_index/fast_text",number_of_nearest_neighbours=10)
 
-total_new_docs = 0
+    compute_nearest_neighbours_fast_text_with_lda_divergence("similarity_index/fast_text",number_of_nearest_neighbours=20)
 
-# recalculate()
-
+print("compute lda topics")
+compute_complete_lda_topics("model/lda.model")
 while True:
-    print("crawling")
-    new_docs = crawl()
-    total_new_docs += new_docs
-    print(total_new_docs)
-    if total_new_docs > 300:
-        recalculate()
-        total_new_docs = 0
+    recalculate()

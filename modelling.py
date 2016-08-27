@@ -59,8 +59,12 @@ def save_lda_topics_to_db(lda_model_path,dictionary):
 
 def compute_complete_lda_topics(model_path,size=100):
     corpus = CompleteCorpus()
-    lda = update_lda_model(corpus,model_path,size)
-    save_lda_topics_to_db(model_path,corpus.dictionary)
+    corpora.MmCorpus.serialize("corpus/temp_complete_corpus.mm", corpus)
+    corpus.dictionary.save("dictionary/temp_complete_dictionary.dict")
+    dictionary = corpora.dictionary.Dictionary.load("dictionary/temp_complete_dictionary.dict")
+    c = corpora.mmcorpus.MmCorpus("corpus/temp_complete_corpus.mm")
+    lda = update_lda_model(c,model_path,size)
+    save_lda_topics_to_db(model_path,dictionary)
     return lda, corpus.dictionary
 
 if __name__ == "__main__":

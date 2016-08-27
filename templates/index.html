@@ -26,11 +26,14 @@
           Aggregating news with artificial intelligence and lots of love.
         </div>
         <div class="pagination">
+
           {% for i in range(max_page)[1:]%}
             {% if current_page == i %}
               {{i}}
             {% else %}
-            <a href={{url_for("items_index",page=i)}}>{{i}}</a>
+            {% if (current_page - i)*(current_page - i) < 10000%}
+              <a href={{url_for("items_index",page=i)}}>{{i}}</a>
+            {% endif %}
             {% endif %}
           {% endfor %}
         </div>
@@ -53,7 +56,9 @@
             {% if current_page == i %}
               {{i}}
             {% else %}
-            <a href={{url_for("items_index",page=i)}}>{{i}}</a>
+            {% if (current_page - i)*(current_page - i) < 10000%}
+              <a href={{url_for("items_index",page=i)}}>{{i}}</a>
+            {% endif %}
             {% endif %}
           {% endfor %}
         </div>

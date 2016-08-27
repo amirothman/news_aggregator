@@ -26,9 +26,11 @@ def items_index(page):
     page = int(page)
     skip = (page-1)*segmentation
     limit = segmentation
+    cursor = collection.find({ "object_id_by_divergence" : { "$exists" : True } }).sort([("time_string",-1)])
+    # cursor = collection.find({ "object_id_by_divergence" : { "$exists" : True } }).sort([["year",-1],["month",-1],["day",-1],["time_string",-1]])
 
-    items = [el for el in collection.find({ "object_id_by_divergence" : { "$exists" : True } }).sort([["year",-1],["month",-1],["day",-1],["time_string",-1]]).skip(skip).limit(limit)]
-    max_page = collection.find({ "object_id_by_divergence" : { "$exists" : True } }).count()/segmentation
+    items = [el for el in cursor.skip(skip).limit(limit)]
+    max_page = cursor.count()/segmentation
     max_page = int(max_page)
 
     # items = collection.find().skip(skip).limit(limit)
@@ -39,8 +41,10 @@ def items_index(page):
         title_link = []
         for news in item["object_id_by_divergence"][:10]:
             related = collection.find_one({"_id":news})
-            title_link.append({"title":related["title"],"link":related["link"]})
-
+            if related:
+                title_link.append({"title":related["title"],"link":related["link"]})
+            else:
+                title_link.append({"title":news["title"],"link":news["link"]})
         modified_items[idx]["title_link"] = title_link
 
     return render_template("index.html",items=modified_items,current_page=page,max_page=max_page)

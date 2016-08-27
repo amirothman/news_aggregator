@@ -13,6 +13,9 @@ from scipy.stats import entropy
 from numpy.linalg import norm
 import subprocess
 import redis
+from timeit import Timer
+
+from datetime import datetime
 
 client = MongoClient()
 db = client['crawled_news']
@@ -112,10 +115,10 @@ def fast_text_to_redis(redis_connection):
             if len(list_string) == 100:
                 redis_connection.set(word," ".join(splitted[1:]))
 
-def index_fast_text(index_target_path,tree_size=20):
+def index_fast_text(index_target_path,index_size = 100,tree_size=20):
     r = redis.StrictRedis(host='localhost', port=6379, db=0)
     update_integer_id()
-    f = 100
+    f = index_size
     t = AnnoyIndex(f)
     print("writing raw text to temp file")
     with open("textfiles/temp_fast_text","w") as temp_file:
@@ -129,9 +132,12 @@ def index_fast_text(index_target_path,tree_size=20):
     fast_text_bulk()
     print("transfer to redis")
     fast_text_to_redis(r)
+    print("delete temp file")
+    subprocess.run(["rm","textfiles/fasttext_word_vector.txt"])
+    subprocess.run(["touch","textfiles/fasttext_word_vector.txt"])
 
     print("indexing fast text")
-    for document in collection.find():
+    for document in collection.find({ "integer_id" : { "$exists" : True } }).batch_size(50):
         # print(document)
         vector = fast_text_vector_from_redis(document["content"],r)
         t.add_item(document["integer_id"],vector[:100])
@@ -199,68 +205,84 @@ def compute_nearest_neighbours_lda(path_to_index,
         del(modified["_id"])
         collection.replace_one({"_id":document_id},modified)
 
-def compute_nearest_neighbours_fast_text(path_to_index,number_of_nearest_neighbours=200):
+def compute_nearest_neighbours_fast_text(path_to_index,index_size = 100,number_of_nearest_neighbours=200):
     r = redis.StrictRedis(host='localhost', port=6379, db=0)
-    f = 100
+    f = index_size
     u = AnnoyIndex(f)
     u.load(path_to_index)
 
-    for document in collection.find():
-        vector = fast_text_vector_from_redis(document["content"],r)
-        sim_idx = u.get_nns_by_vector(vector,number_of_nearest_neighbours)
+    for document in collection.find({ "integer_id" : { "$exists" : True } }):
+        sim_idx = u.get_nns_by_item(document["integer_id"],number_of_nearest_neighbours)
+        document_id = document["_id"]
         nearest_neighbour_ids = []
         if document["integer_id"] % 100 == 0:
             print(document["integer_id"])
         for idx in sim_idx:
             neighbour = collection.find_one({"integer_id":idx})
             if neighbour:
-
-
                 nearest_neighbour_ids.append(neighbour["_id"])
 
-        document_id = document["_id"]
         modified = document
         del(modified["_id"])
         modified["related_news_fast_text"] = nearest_neighbour_ids
+        modified["object_id_by_divergence"] = nearest_neighbour_ids
         collection.replace_one({"_id":document_id},modified)
 
-def compute_nearest_neighbours_fast_text_with_lda_divergence(path_to_index,lda_dimension=100,
+def compute_nearest_neighbours_fast_text_with_lda_divergence(path_to_index,
+                                                             index_size = 100,
+                                                             lda_dimension=100,
                                                              number_of_nearest_neighbours=200):
     r = redis.StrictRedis(host='localhost', port=6379, db=0)
-    f = 100
+    f = index_size
     u = AnnoyIndex(f)
     u.load(path_to_index)
 
-    for document in collection.find():
+
+    for document in collection.find({ "integer_id" : { "$exists" : True } }).batch_size(10):
+        # begin_time = datetime.now()
         vector = fast_text_vector_from_redis(document["content"],r)
         lda_v = document["lda_topics"]
-        lda_np = np.zeros(lda_dimension)
+        lda_np = np.empty(lda_dimension)
 
         for v in lda_v:
             lda_np[v[0]] = v[1]
+
+        # time_2 = datetime.now()
+        # print("duration_1: ",time_2 - begin_time)
 
         sim_idx = u.get_nns_by_vector(vector,number_of_nearest_neighbours)
         sim_idx = set(sim_idx)
         nearest_neighbour_ids = []
         lda_divergence = []
-        if document["integer_id"] % 100 == 0:
-            print(document["integer_id"])
+        # if document["integer_id"] % 100 == 0:
+        #     print(document["integer_id"])
+        print(document["integer_id"])
         for idx in sim_idx:
             neighbour = collection.find_one({"integer_id":idx})
-            if neighbour:
 
+            if neighbour:
                 nearest_neighbour_ids.append(neighbour["_id"])
                 # lda_divergence.append((neighbour["_id"],jensen_shannon_divergence(lda_v,lda_vector(clean(neighbour["content"])))))
                 neighbour_lda = neighbour["lda_topics"]
-                neighbour_lda_np = np.zeros(lda_dimension)
+                neighbour_lda_np = np.empty(lda_dimension)
 
                 for v in neighbour_lda:
                     neighbour_lda_np[v[0]] = v[1]
 
                 lda_divergence.append((neighbour["_id"],jensen_shannon_divergence(lda_np,neighbour_lda_np)))
+
+        # time_3 = datetime.now()
+        # duration_2 = time_3 - time_2
+        # print("duration_2: ",duration_2)
+
+
         sorted_lda = sorted(lda_divergence,key = lambda x: x[1])
         sorted_object_id_by_divergence = [s[0] for s in sorted_lda ]
         sorted_divergence = [s[1] for s in sorted_lda ]
+
+        # time_4 = datetime.now()
+        # print("duration_3: ",time_4 - time_3)
+
         document_id = document["_id"]
         modified = document
         del(modified["_id"])
@@ -268,6 +290,9 @@ def compute_nearest_neighbours_fast_text_with_lda_divergence(path_to_index,lda_d
         modified["object_id_by_divergence"] = sorted_object_id_by_divergence
         modified["related_news_fast_text"] = nearest_neighbour_ids
         collection.replace_one({"_id":document_id},modified)
+
+        # time_5 = datetime.now()
+        # print("duration_4: ",time_5 - time_4)
 
 def compute_nearest_neighbours_doc2vec(path_to_index,
                                        doc2vec_model_path="model/doc2vec.model",
